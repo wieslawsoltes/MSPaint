@@ -88,6 +88,29 @@
     .tool-button i {
       font-size: 16px;
     }
+    /* Visual Thickness Selector */
+    #thicknessSelector {
+      display: flex;
+      align-items: center;
+      margin-left: 10px;
+    }
+    .thickness-option {
+      margin: 0 3px;
+      padding: 3px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .thickness-option.selected {
+      border: 1px solid #000;
+      background-color: #ddd;
+    }
+    .thickness-option .preview {
+      width: 30px;
+      /* The height of the preview is set inline per option */
+    }
     /* Color picker and palette */
     #colorPicker {
       margin-left: 10px;
@@ -232,6 +255,14 @@
     <div class="tool-button" data-tool="fill" title="Fill (F)">
       <i class="fas fa-fill-drip"></i>
     </div>
+    <!-- New tools -->
+    <div class="tool-button" data-tool="airbrush" title="Airbrush (A)">
+      <i class="fas fa-spray-can"></i>
+    </div>
+    <div class="tool-button" data-tool="text" title="Text Tool (T)">
+      <i class="fas fa-font"></i>
+    </div>
+    <!-- Color Picker & Palette -->
     <input type="color" id="colorPicker" value="#000000">
     <div id="classicPalette">
       <div class="color-swatch" style="background-color: #000000;" data-color="#000000"></div>
@@ -263,6 +294,24 @@
     <div class="tool-button" id="helpButton" title="Help (H/F1)">
       <i class="fas fa-question-circle"></i>
     </div>
+    <!-- Visual Thickness Selector -->
+    <div id="thicknessSelector">
+      <div class="thickness-option selected" data-thickness="1">
+        <div class="preview" style="height: 1px; background-color: #000;"></div>
+      </div>
+      <div class="thickness-option" data-thickness="3">
+        <div class="preview" style="height: 3px; background-color: #000;"></div>
+      </div>
+      <div class="thickness-option" data-thickness="5">
+        <div class="preview" style="height: 5px; background-color: #000;"></div>
+      </div>
+      <div class="thickness-option" data-thickness="8">
+        <div class="preview" style="height: 8px; background-color: #000;"></div>
+      </div>
+      <div class="thickness-option" data-thickness="12">
+        <div class="preview" style="height: 12px; background-color: #000;"></div>
+      </div>
+    </div>
   </div>
   
   <!-- Canvas container -->
@@ -286,6 +335,8 @@
         <li><strong>S</strong> - Selection Tool</li>
         <li><strong>E</strong> - Eraser Tool</li>
         <li><strong>F</strong> - Fill Tool</li>
+        <li><strong>A</strong> - Airbrush Tool</li>
+        <li><strong>T</strong> - Text Tool</li>
         <li><strong>Ctrl+C</strong> - Copy Selection</li>
         <li><strong>Ctrl+X</strong> - Cut Selection</li>
         <li><strong>Ctrl+V</strong> - Paste Selection</li>
@@ -323,6 +374,9 @@
     let zoomLevel = 1;
     let undoStack = [];
     
+    // Global thickness variable (default from visual selector)
+    let currentThickness = 1;
+    
     // Selection tool variables
     let selectionActive = false;
     let isSelecting = false;
@@ -330,6 +384,16 @@
     let selectionRect = null;
     let selectionData = null;
     let selectionOffsetX = 0, selectionOffsetY = 0;
+    
+    // Setup visual thickness selector
+    document.querySelectorAll('.thickness-option').forEach(option => {
+      option.addEventListener('click', function() {
+        document.querySelectorAll('.thickness-option').forEach(opt => opt.classList.remove('selected'));
+        this.classList.add('selected');
+        currentThickness = parseInt(this.getAttribute('data-thickness'));
+        updateStatus(`Thickness set to ${currentThickness}`);
+      });
+    });
     
     // Undo functionality
     function pushUndo() {
@@ -361,6 +425,7 @@
       toolButtons.forEach(btn => {
         btn.classList.toggle('active', btn.getAttribute('data-tool') === tool);
       });
+      // Clear selection if switching tools
       if (tool !== 'select') {
         selectionActive = false;
         isSelecting = false;
@@ -531,7 +596,7 @@
       if (currentTool === 'pencil') {
         pushUndo();
         drawing = true;
-        ctx.lineWidth = 1;
+        ctx.lineWidth = currentThickness;
         ctx.strokeStyle = colorPicker.value;
         ctx.beginPath();
         ctx.moveTo(startX, startY);
@@ -539,7 +604,7 @@
       } else if (["line", "rect", "circle", "eraser"].includes(currentTool)) {
         pushUndo();
         drawing = true;
-        ctx.lineWidth = (currentTool === 'eraser' ? 10 : 1);
+        ctx.lineWidth = currentThickness;
         ctx.strokeStyle = (currentTool === 'eraser' ? '#FFF' : colorPicker.value);
         saveCanvasState();
         if (currentTool === 'eraser') {
@@ -570,6 +635,20 @@
         let fillColor = hexToRgb(colorPicker.value);
         floodFill(e.offsetX, e.offsetY, fillColor);
         updateStatus("Fill applied");
+      } else if (currentTool === 'airbrush') {
+        pushUndo();
+        drawing = true;
+        updateStatus("Airbrush activated");
+      } else if (currentTool === 'text') {
+        pushUndo();
+        const userText = prompt("Enter text:");
+        if (userText !== null) {
+          let fontSize = currentThickness * 5;
+          ctx.font = `${fontSize}px sans-serif`;
+          ctx.fillStyle = colorPicker.value;
+          ctx.fillText(userText, e.offsetX, e.offsetY);
+          updateStatus("Text added");
+        }
       }
     });
     
@@ -652,6 +731,17 @@
       } else if (currentTool === 'eraser' && drawing) {
         ctx.lineTo(mouseX, mouseY);
         ctx.stroke();
+      } else if (currentTool === 'airbrush' && drawing) {
+        // Airbrush: spray multiple small dots around the cursor
+        let radius = currentThickness * 2;
+        let density = 30;
+        for (let i = 0; i < density; i++) {
+          let offsetX = (Math.random() - 0.5) * radius;
+          let offsetY = (Math.random() - 0.5) * radius;
+          ctx.fillStyle = colorPicker.value;
+          ctx.fillRect(mouseX + offsetX, mouseY + offsetY, 1, 1);
+        }
+        updateStatus("Airbrushing...");
       } else if (currentTool === 'select') {
         if (isSelecting) {
           restoreCanvasState();
@@ -677,6 +767,8 @@
     
     canvas.addEventListener('mouseup', function(e) {
       if ((["pencil", "line", "rect", "circle", "eraser"].includes(currentTool)) && drawing) {
+        drawing = false;
+      } else if (currentTool === 'airbrush' && drawing) {
         drawing = false;
       } else if (currentTool === 'select') {
         if (isSelecting) {
@@ -710,6 +802,8 @@
       else if (key === 's') setActiveToolButton('select');
       else if (key === 'e') setActiveToolButton('eraser');
       else if (key === 'f') setActiveToolButton('fill');
+      else if (key === 'a') setActiveToolButton('airbrush');
+      else if (key === 't') setActiveToolButton('text');
       else if (e.key === 'f1' || key === 'h') { e.preventDefault(); toggleHelp(); }
       else if (e.ctrlKey && key === 'c') { e.preventDefault(); copySelection(); }
       else if (e.ctrlKey && key === 'x') { e.preventDefault(); cutSelection(); }
