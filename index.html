@@ -136,6 +136,18 @@
       border: 1px solid #000;
       cursor: pointer;
     }
+    /* Airbrush settings panel */
+    #airbrushSettings {
+      margin-left: 10px;
+      padding: 5px;
+      background: #E0E0E0;
+      border: 1px solid #808080;
+      font-size: 12px;
+      display: none;
+    }
+    #airbrushSettings label {
+      margin-right: 5px;
+    }
     /* Canvas container */
     #canvas-container {
       display: flex;
@@ -344,6 +356,22 @@
         <div class="preview" style="height: 12px; background-color: #000;"></div>
       </div>
     </div>
+    <!-- Airbrush Settings Panel -->
+    <div id="airbrushSettings">
+      <label for="airbrushStyle">Style:</label>
+      <select id="airbrushStyle">
+        <option value="standard">Standard</option>
+        <option value="soft">Soft</option>
+        <option value="hard">Hard</option>
+        <option value="speckled">Speckled</option>
+      </select>
+      <label for="airbrushDensity">Density:</label>
+      <input type="range" id="airbrushDensity" min="10" max="100" value="30">
+      <span id="airbrushDensityValue">30</span>
+      <label for="airbrushSize">Size:</label>
+      <input type="range" id="airbrushSize" min="1" max="20" value="2">
+      <span id="airbrushSizeValue">2</span>
+    </div>
   </div>
   
   <!-- Canvas container -->
@@ -427,6 +455,14 @@
       });
     });
     
+    // Update airbrush settings display values
+    document.getElementById('airbrushDensity').addEventListener('input', function(){
+      document.getElementById('airbrushDensityValue').textContent = this.value;
+    });
+    document.getElementById('airbrushSize').addEventListener('input', function(){
+      document.getElementById('airbrushSizeValue').textContent = this.value;
+    });
+    
     // Undo functionality
     function pushUndo() {
       undoStack.push(canvas.toDataURL());
@@ -457,6 +493,8 @@
       toolButtons.forEach(btn => {
         btn.classList.toggle('active', btn.getAttribute('data-tool') === tool);
       });
+      // Show airbrush settings only when airbrush tool is active
+      document.getElementById('airbrushSettings').style.display = (tool === 'airbrush') ? 'block' : 'none';
       // Clear selection if switching tools
       if (tool !== 'select') {
         selectionActive = false;
@@ -711,7 +749,6 @@
         updateStatus("Airbrush activated");
       } else if (currentTool === 'text') {
         pushUndo();
-        // Use inline text input instead of a prompt
         createInlineTextInput(e.offsetX, e.offsetY);
       }
     });
@@ -796,13 +833,30 @@
         ctx.lineTo(mouseX, mouseY);
         ctx.stroke();
       } else if (currentTool === 'airbrush' && drawing) {
-        let radius = currentThickness * 2;
-        let density = 30;
+        // Read airbrush settings
+        let airbrushSize = parseInt(document.getElementById('airbrushSize').value);
+        let density = parseInt(document.getElementById('airbrushDensity').value);
+        let style = document.getElementById('airbrushStyle').value;
+        let radius = airbrushSize * 5;
+        ctx.fillStyle = colorPicker.value;
+        // Adjust based on style
+        if(style === 'soft'){
+          ctx.globalAlpha = 0.3;
+        } else if(style === 'hard'){
+          density = Math.floor(density * 1.2);
+        }
         for (let i = 0; i < density; i++) {
           let offsetX = (Math.random() - 0.5) * radius;
           let offsetY = (Math.random() - 0.5) * radius;
-          ctx.fillStyle = colorPicker.value;
-          ctx.fillRect(mouseX + offsetX, mouseY + offsetY, 1, 1);
+          if(style === 'speckled'){
+            let dotSize = Math.random() * 2 + 1;
+            ctx.fillRect(mouseX + offsetX, mouseY + offsetY, dotSize, dotSize);
+          } else {
+            ctx.fillRect(mouseX + offsetX, mouseY + offsetY, 1, 1);
+          }
+        }
+        if(style === 'soft'){
+          ctx.globalAlpha = 1;
         }
         updateStatus("Airbrushing...");
       } else if (currentTool === 'select') {
