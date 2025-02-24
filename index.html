@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>MS Paint Clone - Advanced Drawing App</title>
+  <!-- Font Awesome CDN for icon glyphs -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    /* Overall page style */
+    body {
+      margin: 0;
+      background-color: #808080; /* classic gray Windows background */
+      font-family: "MS Sans Serif", Tahoma, sans-serif;
+    }
+    /* Title Bar */
+    #titlebar {
+      background: #000080;
+      color: white;
+      padding: 2px 5px;
+      font-size: 14px;
+      user-select: none;
+    }
+    /* Menu Bar with dropdown menus */
+    #menuBar {
+      background: #C0C0C0;
+      padding: 2px 5px;
+      font-size: 12px;
+      border-bottom: 2px solid #FFF;
+      user-select: none;
+    }
+    .menuItem {
+      margin-right: 15px;
+      cursor: default;
+      display: inline-block;
+      position: relative;
+      padding: 2px 5px;
+    }
+    .menuItem:hover {
+      background: #A0A0A0;
+    }
+    .dropdown-content {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      background-color: #F0F0F0;
+      min-width: 150px;
+      box-shadow: 0px 8px 16px rgba(0,0,0,0.2);
+      z-index: 100;
+    }
+    .dropdown-content .dropdown-item {
+      padding: 8px 12px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .dropdown-content .dropdown-item:hover {
+      background-color: #ddd;
+    }
+    .menuItem:hover .dropdown-content {
+      display: block;
+    }
+    /* Toolbar styling */
+    #toolbar {
+      background: #F0F0F0;
+      padding: 5px;
+      border: 1px solid #808080;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .tool-button {
+      background: #C0C0C0;
+      border: 2px outset #FFF;
+      padding: 4px;
+      margin: 2px;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+    }
+    .tool-button.active {
+      border: 2px inset #ccc;
+      background: #E0E0E0;
+    }
+    .tool-button i {
+      font-size: 16px;
+    }
+    /* Color picker and palette */
+    #colorPicker {
+      margin-left: 10px;
+      padding: 1px;
+      border: 2px inset #FFF;
+      cursor: pointer;
+    }
+    #classicPalette {
+      display: flex;
+      align-items: center;
+      margin-left: 10px;
+    }
+    .color-swatch {
+      width: 20px;
+      height: 20px;
+      margin: 2px;
+      border: 1px solid #000;
+      cursor: pointer;
+    }
+    /* Canvas container */
+    #canvas-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 10px;
+      background: white;
+    }
+    #drawingCanvas {
+      background: white;
+      border: 2px solid #000;
+      cursor: crosshair;
+      transition: transform 0.2s ease;
+    }
+    /* Status Bar */
+    #statusBar {
+      background: #C0C0C0;
+      padding: 2px 5px;
+      border-top: 1px solid #808080;
+      font-size: 12px;
+      user-select: none;
+    }
+    /* Modal (for Help and About dialogs) */
+    .modal {
+      display: none; 
+      position: fixed;
+      z-index: 200;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0,0,0,0.4);
+    }
+    .modal-content {
+      background-color: #fefefe;
+      margin: 15% auto;
+      padding: 20px;
+      border: 2px solid #808080;
+      width: 320px;
+      font-size: 12px;
+    }
+    .close {
+      color: #000;
+      float: right;
+      font-size: 20px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .close:hover, .close:focus {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+  <!-- Title Bar -->
+  <div id="titlebar">MS Paint</div>
+  <!-- Menu Bar -->
+  <div id="menuBar">
+    <div class="menuItem">File
+      <div class="dropdown-content">
+        <div class="dropdown-item" id="newFile">New</div>
+        <div class="dropdown-item" id="openFile">Open...</div>
+        <div class="dropdown-item" id="saveFile">Save As...</div>
+        <div class="dropdown-item" id="printFile">Print...</div>
+        <div class="dropdown-item" id="exitApp">Exit</div>
+      </div>
+    </div>
+    <div class="menuItem">Edit
+      <div class="dropdown-content">
+        <div class="dropdown-item" id="undoEdit">Undo</div>
+        <div class="dropdown-item" id="cutEdit">Cut</div>
+        <div class="dropdown-item" id="copyEdit">Copy</div>
+        <div class="dropdown-item" id="pasteEdit">Paste</div>
+        <div class="dropdown-item" id="deleteEdit">Delete</div>
+        <div class="dropdown-item" id="selectAllEdit">Select All</div>
+      </div>
+    </div>
+    <div class="menuItem">View
+      <div class="dropdown-content">
+        <div class="dropdown-item" id="zoomIn">Zoom In</div>
+        <div class="dropdown-item" id="zoomOut">Zoom Out</div>
+        <div class="dropdown-item" id="zoomRestore">Restore Zoom</div>
+        <div class="dropdown-item" id="toggleStatusBar">Toggle Status Bar</div>
+      </div>
+    </div>
+    <div class="menuItem">Image
+      <div class="dropdown-content">
+        <div class="dropdown-item" id="resizeImage">Resize</div>
+        <div class="dropdown-item" id="flipHorizontal">Flip Horizontal</div>
+        <div class="dropdown-item" id="flipVertical">Flip Vertical</div>
+        <div class="dropdown-item" id="imageAttributes">Attributes</div>
+      </div>
+    </div>
+    <div class="menuItem">Help
+      <div class="dropdown-content">
+        <div class="dropdown-item" id="helpTopics">Help Topics</div>
+        <div class="dropdown-item" id="aboutPaint">About Paint</div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Toolbar -->
+  <div id="toolbar">
+    <div class="tool-button active" data-tool="pencil" title="Pencil (P)">
+      <i class="fas fa-pencil-alt"></i>
+    </div>
+    <div class="tool-button" data-tool="line" title="Line (L)">
+      <i class="fas fa-slash"></i>
+    </div>
+    <div class="tool-button" data-tool="rect" title="Rectangle (R)">
+      <i class="far fa-square"></i>
+    </div>
+    <div class="tool-button" data-tool="circle" title="Ellipse (C)">
+      <i class="far fa-circle"></i>
+    </div>
+    <div class="tool-button" data-tool="select" title="Select (S)">
+      <i class="fas fa-mouse-pointer"></i>
+    </div>
+    <div class="tool-button" data-tool="eraser" title="Eraser (E)">
+      <i class="fas fa-eraser"></i>
+    </div>
+    <div class="tool-button" data-tool="fill" title="Fill (F)">
+      <i class="fas fa-fill-drip"></i>
+    </div>
+    <input type="color" id="colorPicker" value="#000000">
+    <div id="classicPalette">
+      <div class="color-swatch" style="background-color: #000000;" data-color="#000000"></div>
+      <div class="color-swatch" style="background-color: #808080;" data-color="#808080"></div>
+      <div class="color-swatch" style="background-color: #C0C0C0;" data-color="#C0C0C0"></div>
+      <div class="color-swatch" style="background-color: #FFFFFF;" data-color="#FFFFFF"></div>
+      <div class="color-swatch" style="background-color: #FF0000;" data-color="#FF0000"></div>
+      <div class="color-swatch" style="background-color: #800000;" data-color="#800000"></div>
+      <div class="color-swatch" style="background-color: #FFFF00;" data-color="#FFFF00"></div>
+      <div class="color-swatch" style="background-color: #008000;" data-color="#008000"></div>
+      <div class="color-swatch" style="background-color: #0000FF;" data-color="#0000FF"></div>
+      <div class="color-swatch" style="background-color: #800080;" data-color="#800080"></div>
+    </div>
+    <div class="tool-button" id="clearCanvas" title="Clear Canvas">
+      <i class="fas fa-trash-alt"></i>
+    </div>
+    <div class="tool-button" id="copyButton" title="Copy (Ctrl+C)">
+      <i class="fas fa-copy"></i>
+    </div>
+    <div class="tool-button" id="cutButton" title="Cut (Ctrl+X)">
+      <i class="fas fa-cut"></i>
+    </div>
+    <div class="tool-button" id="pasteButton" title="Paste (Ctrl+V)">
+      <i class="fas fa-paste"></i>
+    </div>
+    <div class="tool-button" id="cropButton" title="Crop (Ctrl+Shift+O)">
+      <i class="fas fa-crop-alt"></i>
+    </div>
+    <div class="tool-button" id="helpButton" title="Help (H/F1)">
+      <i class="fas fa-question-circle"></i>
+    </div>
+  </div>
+  
+  <!-- Canvas container -->
+  <div id="canvas-container">
+    <canvas id="drawingCanvas" width="800" height="600"></canvas>
+  </div>
+  
+  <!-- Status Bar -->
+  <div id="statusBar">Ready</div>
+  
+  <!-- Help Modal -->
+  <div id="helpModal" class="modal">
+    <div class="modal-content">
+      <span class="close" id="helpClose">&times;</span>
+      <h2>Keyboard Shortcuts & Modifiers</h2>
+      <ul>
+        <li><strong>P</strong> - Pencil Tool</li>
+        <li><strong>L</strong> - Line Tool</li>
+        <li><strong>R</strong> - Rectangle Tool</li>
+        <li><strong>C</strong> - Ellipse Tool</li>
+        <li><strong>S</strong> - Selection Tool</li>
+        <li><strong>E</strong> - Eraser Tool</li>
+        <li><strong>F</strong> - Fill Tool</li>
+        <li><strong>Ctrl+C</strong> - Copy Selection</li>
+        <li><strong>Ctrl+X</strong> - Cut Selection</li>
+        <li><strong>Ctrl+V</strong> - Paste Selection</li>
+        <li><strong>Ctrl+Shift+O</strong> - Crop to Selection</li>
+        <li><strong>H</strong> or <strong>F1</strong> - Toggle Help</li>
+        <li><strong>Shift</strong> - Constrain proportions</li>
+        <li><strong>Alt</strong> - Draw from center</li>
+      </ul>
+    </div>
+  </div>
+  
+  <!-- About Modal -->
+  <div id="aboutModal" class="modal">
+    <div class="modal-content">
+      <span class="close" id="aboutClose">&times;</span>
+      <h2>About MS Paint Clone</h2>
+      <p>This is a clone of the classic MS Paint application built with HTML5 Canvas.</p>
+      <p>Version 1.0</p>
+    </div>
+  </div>
+  
+  <!-- Hidden file input for Open command -->
+  <input type="file" id="fileInput" accept="image/*" style="display: none;">
+  
+  <script>
+    // Global canvas variables
+    const canvas = document.getElementById('drawingCanvas');
+    const ctx = canvas.getContext('2d');
+    const colorPicker = document.getElementById('colorPicker');
+    let drawing = false;
+    let currentTool = 'pencil';
+    let startX = 0, startY = 0;
+    let savedImageData = null;
+    let clipboardData = null;
+    let zoomLevel = 1;
+    let undoStack = [];
+    
+    // Selection tool variables
+    let selectionActive = false;
+    let isSelecting = false;
+    let isMovingSelection = false;
+    let selectionRect = null;
+    let selectionData = null;
+    let selectionOffsetX = 0, selectionOffsetY = 0;
+    
+    // Undo functionality
+    function pushUndo() {
+      undoStack.push(canvas.toDataURL());
+      if (undoStack.length > 20) undoStack.shift();
+    }
+    function undoAction() {
+      if (undoStack.length > 0) {
+        let lastState = undoStack.pop();
+        let img = new Image();
+        img.onload = function() {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0);
+        }
+        img.src = lastState;
+        updateStatus("Undo performed");
+      }
+    }
+    
+    // Toolbar tool selection
+    const toolButtons = document.querySelectorAll('.tool-button[data-tool]');
+    toolButtons.forEach(button => {
+      button.addEventListener('click', function() {
+        setActiveToolButton(this.getAttribute('data-tool'));
+      });
+    });
+    function setActiveToolButton(tool) {
+      currentTool = tool;
+      toolButtons.forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-tool') === tool);
+      });
+      if (tool !== 'select') {
+        selectionActive = false;
+        isSelecting = false;
+        isMovingSelection = false;
+        selectionRect = null;
+        selectionData = null;
+      }
+      updateStatus(`Tool: ${tool}`);
+    }
+    
+    // Status bar update
+    function updateStatus(message) {
+      document.getElementById('statusBar').textContent = message;
+    }
+    
+    // Toolbar action buttons
+    document.getElementById('clearCanvas').addEventListener('click', function() {
+      pushUndo();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      updateStatus("Canvas cleared");
+    });
+    document.getElementById('copyButton').addEventListener('click', copySelection);
+    document.getElementById('cutButton').addEventListener('click', cutSelection);
+    document.getElementById('pasteButton').addEventListener('click', pasteClipboard);
+    document.getElementById('cropButton').addEventListener('click', cropToSelection);
+    
+    // Color palette events
+    document.querySelectorAll('.color-swatch').forEach(swatch => {
+      swatch.addEventListener('click', function() {
+        colorPicker.value = this.getAttribute('data-color');
+        updateStatus(`Color set to ${colorPicker.value}`);
+      });
+    });
+    
+    function saveCanvasState() {
+      savedImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    }
+    function restoreCanvasState() {
+      if (savedImageData) ctx.putImageData(savedImageData, 0, 0);
+    }
+    
+    // Helper functions for selection
+    function pointInsideRect(x, y, rect) {
+      return x >= rect.x && x <= rect.x + rect.w && y >= rect.y && y <= rect.y + rect.h;
+    }
+    function computeSelectionRect(sx, sy, cx, cy, shift, alt) {
+      let x, y, w, h;
+      if (alt) {
+        let dx = cx - sx, dy = cy - sy;
+        if (shift) {
+          let side = Math.min(Math.abs(dx), Math.abs(dy));
+          dx = dx < 0 ? -side : side;
+          dy = dy < 0 ? -side : side;
+        }
+        x = sx - dx;
+        y = sy - dy;
+        w = 2 * dx;
+        h = 2 * dy;
+        if (w < 0) { x += w; w = Math.abs(w); }
+        if (h < 0) { y += h; h = Math.abs(h); }
+      } else {
+        w = cx - sx;
+        h = cy - sy;
+        if (shift) {
+          let side = Math.min(Math.abs(w), Math.abs(h));
+          w = w < 0 ? -side : side;
+          h = h < 0 ? -side : side;
+        }
+        x = sx;
+        y = sy;
+        if (w < 0) { x = cx; w = Math.abs(w); }
+        if (h < 0) { y = cy; h = Math.abs(h); }
+      }
+      return { x, y, w, h };
+    }
+    
+    // Flood fill tool
+    function floodFill(x, y, fillColor) {
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+      const width = imageData.width;
+      const height = imageData.height;
+      const stack = [];
+      const startPos = (y * width + x) * 4;
+      const startColor = [data[startPos], data[startPos+1], data[startPos+2], data[startPos+3]];
+      const fillCol = [fillColor.r, fillColor.g, fillColor.b, 255];
+      
+      if (colorsMatch(startColor, fillCol)) return;
+      
+      stack.push([x, y]);
+      while (stack.length) {
+        const [px, py] = stack.pop();
+        const pos = (py * width + px) * 4;
+        const currentColor = [data[pos], data[pos+1], data[pos+2], data[pos+3]];
+        if (colorsMatch(currentColor, startColor)) {
+          data[pos] = fillCol[0];
+          data[pos+1] = fillCol[1];
+          data[pos+2] = fillCol[2];
+          data[pos+3] = fillCol[3];
+          if (px > 0) stack.push([px-1, py]);
+          if (px < width-1) stack.push([px+1, py]);
+          if (py > 0) stack.push([px, py-1]);
+          if (py < height-1) stack.push([px, py+1]);
+        }
+      }
+      ctx.putImageData(imageData, 0, 0);
+    }
+    function colorsMatch(a, b) {
+      return a[0] === b[0] && a[1] === b[1] && a[2] === b[2] && a[3] === b[3];
+    }
+    function hexToRgb(hex) {
+      hex = hex.replace('#','');
+      if (hex.length === 3) hex = hex.split('').map(c => c+c).join('');
+      const bigint = parseInt(hex, 16);
+      return { r: (bigint >> 16) & 255, g: (bigint >> 8) & 255, b: bigint & 255 };
+    }
+    
+    // Clipboard & Crop functions
+    function copySelection() {
+      if (selectionActive && selectionRect && selectionData) {
+        clipboardData = selectionData;
+        updateStatus("Selection copied");
+      }
+    }
+    function cutSelection() {
+      if (selectionActive && selectionRect && selectionData) {
+        clipboardData = selectionData;
+        pushUndo();
+        ctx.clearRect(selectionRect.x, selectionRect.y, selectionRect.w, selectionRect.h);
+        selectionActive = false;
+        selectionRect = null;
+        selectionData = null;
+        updateStatus("Selection cut");
+      }
+    }
+    function pasteClipboard() {
+      if (clipboardData) {
+        selectionData = clipboardData;
+        selectionRect = { x: 10, y: 10, w: clipboardData.width, h: clipboardData.height };
+        selectionActive = true;
+        restoreCanvasState();
+        ctx.putImageData(selectionData, selectionRect.x, selectionRect.y);
+        ctx.setLineDash([5, 5]);
+        ctx.strokeStyle = 'black';
+        ctx.strokeRect(selectionRect.x, selectionRect.y, selectionRect.w, selectionRect.h);
+        ctx.setLineDash([]);
+        updateStatus("Pasted selection");
+      }
+    }
+    function cropToSelection() {
+      if (selectionActive && selectionRect && selectionData) {
+        pushUndo();
+        let cropData = ctx.getImageData(selectionRect.x, selectionRect.y, selectionRect.w, selectionRect.h);
+        canvas.width = selectionRect.w;
+        canvas.height = selectionRect.h;
+        ctx.putImageData(cropData, 0, 0);
+        selectionActive = false;
+        selectionData = null;
+        selectionRect = null;
+        updateStatus("Canvas cropped to selection");
+      }
+    }
+    
+    // Mouse event handling
+    canvas.addEventListener('mousedown', function(e) {
+      startX = e.offsetX;
+      startY = e.offsetY;
+      if (currentTool === 'pencil') {
+        pushUndo();
+        drawing = true;
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = colorPicker.value;
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        updateStatus("Drawing with Pencil");
+      } else if (["line", "rect", "circle", "eraser"].includes(currentTool)) {
+        pushUndo();
+        drawing = true;
+        ctx.lineWidth = (currentTool === 'eraser' ? 10 : 1);
+        ctx.strokeStyle = (currentTool === 'eraser' ? '#FFF' : colorPicker.value);
+        saveCanvasState();
+        if (currentTool === 'eraser') {
+          ctx.beginPath();
+          ctx.moveTo(startX, startY);
+        }
+        updateStatus(`Drawing ${currentTool}`);
+      } else if (currentTool === 'select') {
+        if (!selectionActive) {
+          isSelecting = true;
+          saveCanvasState();
+          updateStatus("Selecting region");
+        } else if (selectionActive && pointInsideRect(e.offsetX, e.offsetY, selectionRect)) {
+          isMovingSelection = true;
+          selectionOffsetX = e.offsetX - selectionRect.x;
+          selectionOffsetY = e.offsetY - selectionRect.y;
+          saveCanvasState();
+          updateStatus("Moving selection");
+        } else {
+          selectionActive = false;
+          selectionData = null;
+          selectionRect = null;
+          restoreCanvasState();
+          updateStatus("Selection cleared");
+        }
+      } else if (currentTool === 'fill') {
+        pushUndo();
+        let fillColor = hexToRgb(colorPicker.value);
+        floodFill(e.offsetX, e.offsetY, fillColor);
+        updateStatus("Fill applied");
+      }
+    });
+    
+    canvas.addEventListener('mousemove', function(e) {
+      const mouseX = e.offsetX;
+      const mouseY = e.offsetY;
+      if (currentTool === 'pencil' && drawing) {
+        ctx.lineTo(mouseX, mouseY);
+        ctx.stroke();
+      } else if (currentTool === 'line' && drawing) {
+        restoreCanvasState();
+        ctx.beginPath();
+        let dx = mouseX - startX, dy = mouseY - startY;
+        if (e.shiftKey) {
+          const length = Math.sqrt(dx * dx + dy * dy);
+          const angle = Math.atan2(dy, dx);
+          const snapped = Math.round(angle / (Math.PI / 4)) * (Math.PI / 4);
+          dx = length * Math.cos(snapped);
+          dy = length * Math.sin(snapped);
+        }
+        if (e.altKey) {
+          ctx.moveTo(startX - dx, startY - dy);
+          ctx.lineTo(startX + dx, startY + dy);
+        } else {
+          ctx.moveTo(startX, startY);
+          ctx.lineTo(startX + dx, startY + dy);
+        }
+        ctx.stroke();
+      } else if (currentTool === 'rect' && drawing) {
+        restoreCanvasState();
+        let dx = mouseX - startX, dy = mouseY - startY;
+        if (e.shiftKey) {
+          const side = Math.min(Math.abs(dx), Math.abs(dy));
+          dx = dx < 0 ? -side : side;
+          dy = dy < 0 ? -side : side;
+        }
+        if (e.altKey) {
+          const x = startX - dx;
+          const y = startY - dy;
+          ctx.strokeRect(x, y, 2 * dx, 2 * dy);
+        } else {
+          ctx.strokeRect(startX, startY, dx, dy);
+        }
+      } else if (currentTool === 'circle' && drawing) {
+        restoreCanvasState();
+        ctx.beginPath();
+        if (e.altKey) {
+          let dx = mouseX - startX, dy = mouseY - startY;
+          if (e.shiftKey) {
+            const side = Math.min(Math.abs(dx), Math.abs(dy));
+            dx = dx < 0 ? -side : side;
+            dy = dy < 0 ? -side : side;
+          }
+          if (ctx.ellipse) {
+            ctx.ellipse(startX, startY, Math.abs(dx), Math.abs(dy), 0, 0, Math.PI * 2);
+          } else {
+            const radius = (Math.abs(dx) + Math.abs(dy)) / 2;
+            ctx.arc(startX, startY, radius, 0, Math.PI * 2);
+          }
+        } else {
+          let x = startX, y = startY, w = mouseX - startX, h = mouseY - startY;
+          if (w < 0) { x = mouseX; w = -w; }
+          if (h < 0) { y = mouseY; h = -h; }
+          if (e.shiftKey) {
+            const d = Math.min(w, h);
+            const cx = x + w / 2;
+            const cy = y + h / 2;
+            x = cx - d / 2;
+            y = cy - d / 2;
+            w = d; h = d;
+          }
+          if (ctx.ellipse) {
+            ctx.ellipse(x + w / 2, y + h / 2, Math.abs(w / 2), Math.abs(h / 2), 0, 0, Math.PI * 2);
+          } else {
+            const radius = (w + h) / 4;
+            ctx.arc(x + w / 2, y + h / 2, radius, 0, Math.PI * 2);
+          }
+        }
+        ctx.stroke();
+      } else if (currentTool === 'eraser' && drawing) {
+        ctx.lineTo(mouseX, mouseY);
+        ctx.stroke();
+      } else if (currentTool === 'select') {
+        if (isSelecting) {
+          restoreCanvasState();
+          selectionRect = computeSelectionRect(startX, startY, mouseX, mouseY, e.shiftKey, e.altKey);
+          ctx.setLineDash([5, 5]);
+          ctx.strokeStyle = 'black';
+          ctx.strokeRect(selectionRect.x, selectionRect.y, selectionRect.w, selectionRect.h);
+          ctx.setLineDash([]);
+        } else if (isMovingSelection) {
+          restoreCanvasState();
+          const newX = mouseX - selectionOffsetX;
+          const newY = mouseY - selectionOffsetY;
+          selectionRect.x = newX;
+          selectionRect.y = newY;
+          ctx.putImageData(selectionData, newX, newY);
+          ctx.setLineDash([5, 5]);
+          ctx.strokeStyle = 'black';
+          ctx.strokeRect(newX, newY, selectionRect.w, selectionRect.h);
+          ctx.setLineDash([]);
+        }
+      }
+    });
+    
+    canvas.addEventListener('mouseup', function(e) {
+      if ((["pencil", "line", "rect", "circle", "eraser"].includes(currentTool)) && drawing) {
+        drawing = false;
+      } else if (currentTool === 'select') {
+        if (isSelecting) {
+          isSelecting = false;
+          selectionActive = true;
+          selectionData = ctx.getImageData(selectionRect.x, selectionRect.y, selectionRect.w, selectionRect.h);
+          updateStatus("Region selected");
+        } else if (isMovingSelection) {
+          isMovingSelection = false;
+          selectionActive = false;
+          selectionData = null;
+          selectionRect = null;
+          updateStatus("Selection moved");
+        }
+      }
+    });
+    
+    canvas.addEventListener('mouseout', function(e) {
+      drawing = false;
+      isSelecting = false;
+      isMovingSelection = false;
+    });
+    
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+      const key = e.key.toLowerCase();
+      if (key === 'p') setActiveToolButton('pencil');
+      else if (key === 'l') setActiveToolButton('line');
+      else if (key === 'r') setActiveToolButton('rect');
+      else if (key === 'c') setActiveToolButton('circle');
+      else if (key === 's') setActiveToolButton('select');
+      else if (key === 'e') setActiveToolButton('eraser');
+      else if (key === 'f') setActiveToolButton('fill');
+      else if (e.key === 'f1' || key === 'h') { e.preventDefault(); toggleHelp(); }
+      else if (e.ctrlKey && key === 'c') { e.preventDefault(); copySelection(); }
+      else if (e.ctrlKey && key === 'x') { e.preventDefault(); cutSelection(); }
+      else if (e.ctrlKey && key === 'v') { e.preventDefault(); pasteClipboard(); }
+      else if (e.ctrlKey && e.shiftKey && key === 'o') { e.preventDefault(); cropToSelection(); }
+    });
+    
+    // Help Modal functionality
+    const helpModal = document.getElementById('helpModal');
+    const helpClose = document.getElementById('helpClose');
+    document.getElementById('helpButton').addEventListener('click', toggleHelp);
+    helpClose.addEventListener('click', toggleHelp);
+    function toggleHelp() {
+      helpModal.style.display = (helpModal.style.display === 'block') ? 'none' : 'block';
+    }
+    window.addEventListener('click', function(e) {
+      if (e.target === helpModal) helpModal.style.display = 'none';
+      if (e.target === aboutModal) aboutModal.style.display = 'none';
+    });
+    
+    // Menu functions
+    // File Menu
+    document.getElementById('newFile').addEventListener('click', function() {
+      if (confirm("Start a new drawing? Unsaved work will be lost.")) {
+        pushUndo();
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        undoStack = [];
+        updateStatus("New file created");
+      }
+    });
+    document.getElementById('openFile').addEventListener('click', function() {
+      document.getElementById('fileInput').click();
+    });
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          const img = new Image();
+          img.onload = function() {
+            pushUndo();
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+            updateStatus("Image loaded");
+          }
+          img.src = evt.target.result;
+        }
+        reader.readAsDataURL(file);
+      }
+    });
+    document.getElementById('saveFile').addEventListener('click', function() {
+      const link = document.createElement('a');
+      link.download = 'mspaint_clone.png';
+      link.href = canvas.toDataURL();
+      link.click();
+      updateStatus("File saved");
+    });
+    document.getElementById('printFile').addEventListener('click', function() {
+      window.print();
+    });
+    document.getElementById('exitApp').addEventListener('click', function() {
+      if (confirm("Are you sure you want to exit?")) window.close();
+    });
+    
+    // Edit Menu
+    document.getElementById('undoEdit').addEventListener('click', undoAction);
+    document.getElementById('cutEdit').addEventListener('click', cutSelection);
+    document.getElementById('copyEdit').addEventListener('click', copySelection);
+    document.getElementById('pasteEdit').addEventListener('click', pasteClipboard);
+    document.getElementById('deleteEdit').addEventListener('click', function() {
+      if (selectionActive && selectionRect) {
+        pushUndo();
+        ctx.clearRect(selectionRect.x, selectionRect.y, selectionRect.w, selectionRect.h);
+        selectionActive = false;
+        selectionRect = null;
+        selectionData = null;
+        updateStatus("Selection deleted");
+      }
+    });
+    document.getElementById('selectAllEdit').addEventListener('click', function() {
+      selectionRect = { x: 0, y: 0, w: canvas.width, h: canvas.height };
+      selectionData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      selectionActive = true;
+      ctx.setLineDash([5, 5]);
+      ctx.strokeStyle = 'black';
+      ctx.strokeRect(0, 0, canvas.width, canvas.height);
+      ctx.setLineDash([]);
+      updateStatus("All selected");
+    });
+    
+    // View Menu
+    document.getElementById('zoomIn').addEventListener('click', function() {
+      zoomLevel += 0.1;
+      canvas.style.transform = `scale(${zoomLevel})`;
+      updateStatus(`Zoom: ${(zoomLevel*100).toFixed(0)}%`);
+    });
+    document.getElementById('zoomOut').addEventListener('click', function() {
+      zoomLevel = Math.max(0.1, zoomLevel - 0.1);
+      canvas.style.transform = `scale(${zoomLevel})`;
+      updateStatus(`Zoom: ${(zoomLevel*100).toFixed(0)}%`);
+    });
+    document.getElementById('zoomRestore').addEventListener('click', function() {
+      zoomLevel = 1;
+      canvas.style.transform = 'scale(1)';
+      updateStatus("Zoom restored");
+    });
+    document.getElementById('toggleStatusBar').addEventListener('click', function() {
+      const statusBar = document.getElementById('statusBar');
+      statusBar.style.display = (statusBar.style.display === 'none') ? 'block' : 'none';
+    });
+    
+    // Image Menu
+    document.getElementById('resizeImage').addEventListener('click', function() {
+      const newWidth = prompt("Enter new width:", canvas.width);
+      const newHeight = prompt("Enter new height:", canvas.height);
+      if (newWidth && newHeight) {
+        pushUndo();
+        const tempImg = new Image();
+        tempImg.src = canvas.toDataURL();
+        tempImg.onload = function() {
+          canvas.width = parseInt(newWidth);
+          canvas.height = parseInt(newHeight);
+          ctx.drawImage(tempImg, 0, 0, canvas.width, canvas.height);
+          updateStatus("Image resized");
+        }
+      }
+    });
+    document.getElementById('flipHorizontal').addEventListener('click', function() {
+      pushUndo();
+      const tempImg = new Image();
+      tempImg.src = canvas.toDataURL();
+      tempImg.onload = function() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.save();
+        ctx.scale(-1, 1);
+        ctx.drawImage(tempImg, -canvas.width, 0);
+        ctx.restore();
+        updateStatus("Flipped horizontally");
+      }
+    });
+    document.getElementById('flipVertical').addEventListener('click', function() {
+      pushUndo();
+      const tempImg = new Image();
+      tempImg.src = canvas.toDataURL();
+      tempImg.onload = function() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.save();
+        ctx.scale(1, -1);
+        ctx.drawImage(tempImg, 0, -canvas.height);
+        ctx.restore();
+        updateStatus("Flipped vertically");
+      }
+    });
+    document.getElementById('imageAttributes').addEventListener('click', function() {
+      alert(`Width: ${canvas.width} px\nHeight: ${canvas.height} px`);
+    });
+    
+    // Help Menu
+    document.getElementById('helpTopics').addEventListener('click', toggleHelp);
+    const aboutModal = document.getElementById('aboutModal');
+    const aboutClose = document.getElementById('aboutClose');
+    document.getElementById('aboutPaint').addEventListener('click', function() {
+      aboutModal.style.display = 'block';
+    });
+    aboutClose.addEventListener('click', function() {
+      aboutModal.style.display = 'none';
+    });
+  </script>
+</body>
+</html>
