@@ -88,6 +88,12 @@
     .tool-button i {
       font-size: 16px;
     }
+    /* Text size selector styling */
+    #textSizeSelector {
+      margin-left: 10px;
+      height: 32px;
+      font-size: 14px;
+    }
     /* Visual Thickness Selector */
     #thicknessSelector {
       display: flex;
@@ -137,12 +143,26 @@
       align-items: center;
       padding: 10px;
       background: white;
+      position: relative;
     }
     #drawingCanvas {
       background: white;
       border: 2px solid #000;
       cursor: crosshair;
       transition: transform 0.2s ease;
+    }
+    /* Inline text input styling */
+    .inline-text-input {
+      position: absolute;
+      outline: 1px dotted black;
+      background: transparent;
+      border: none;
+      color: inherit;
+      padding: 0;
+      margin: 0;
+      min-width: 50px;
+      min-height: 20px;
+      white-space: pre;
     }
     /* Status Bar */
     #statusBar {
@@ -262,6 +282,18 @@
     <div class="tool-button" data-tool="text" title="Text Tool (T)">
       <i class="fas fa-font"></i>
     </div>
+    <!-- Text Size Selector -->
+    <select id="textSizeSelector">
+      <option value="8">8</option>
+      <option value="12" selected>12</option>
+      <option value="16">16</option>
+      <option value="20">20</option>
+      <option value="24">24</option>
+      <option value="28">28</option>
+      <option value="32">32</option>
+      <option value="48">48</option>
+      <option value="72">72</option>
+    </select>
     <!-- Color Picker & Palette -->
     <input type="color" id="colorPicker" value="#000000">
     <div id="classicPalette">
@@ -589,6 +621,44 @@
       }
     }
     
+    // Create inline text input for the Text Tool
+    function createInlineTextInput(x, y) {
+      // Create a contenteditable div
+      const input = document.createElement('div');
+      input.contentEditable = true;
+      input.className = 'inline-text-input';
+      // Position the input relative to the canvas container
+      const canvasRect = canvas.getBoundingClientRect();
+      input.style.left = (canvasRect.left + x) + 'px';
+      input.style.top = (canvasRect.top + y) + 'px';
+      // Set font size from the selector and use current color
+      const textSize = document.getElementById('textSizeSelector').value;
+      input.style.font = `${textSize}px sans-serif`;
+      input.style.color = colorPicker.value;
+      document.body.appendChild(input);
+      input.focus();
+
+      // Finalize the text input by drawing it on the canvas
+      function finalizeText() {
+        const text = input.innerText;
+        if (text) {
+          ctx.font = `${textSize}px sans-serif`;
+          ctx.fillStyle = colorPicker.value;
+          // Adjust y-coordinate so text sits where you clicked
+          ctx.fillText(text, x, y + parseInt(textSize));
+        }
+        document.body.removeChild(input);
+        updateStatus("Text added");
+      }
+      input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          finalizeText();
+        }
+      });
+      input.addEventListener('blur', finalizeText);
+    }
+    
     // Mouse event handling
     canvas.addEventListener('mousedown', function(e) {
       startX = e.offsetX;
@@ -641,14 +711,8 @@
         updateStatus("Airbrush activated");
       } else if (currentTool === 'text') {
         pushUndo();
-        const userText = prompt("Enter text:");
-        if (userText !== null) {
-          let fontSize = currentThickness * 5;
-          ctx.font = `${fontSize}px sans-serif`;
-          ctx.fillStyle = colorPicker.value;
-          ctx.fillText(userText, e.offsetX, e.offsetY);
-          updateStatus("Text added");
-        }
+        // Use inline text input instead of a prompt
+        createInlineTextInput(e.offsetX, e.offsetY);
       }
     });
     
@@ -732,7 +796,6 @@
         ctx.lineTo(mouseX, mouseY);
         ctx.stroke();
       } else if (currentTool === 'airbrush' && drawing) {
-        // Airbrush: spray multiple small dots around the cursor
         let radius = currentThickness * 2;
         let density = 30;
         for (let i = 0; i < density; i++) {
