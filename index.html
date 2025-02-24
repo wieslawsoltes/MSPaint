@@ -166,6 +166,7 @@
     /* Inline text input styling */
     .inline-text-input {
       position: absolute;
+      z-index: 1000; /* added */
       outline: 1px dotted black;
       background: transparent;
       border: none;
@@ -665,15 +666,17 @@
       const input = document.createElement('div');
       input.contentEditable = true;
       input.className = 'inline-text-input';
-      // Position the input relative to the canvas container
-      const canvasRect = canvas.getBoundingClientRect();
-      input.style.left = (canvasRect.left + x) + 'px';
-      input.style.top = (canvasRect.top + y) + 'px';
-      // Set font size from the selector and use current color
+      input.style.position = 'absolute';
+      // Instead of calculating using the canvas’s viewport coordinates,
+      // we append the input to the canvas container and use local coordinates.
+      const container = document.getElementById('canvas-container');
+      input.style.left = x + 'px';
+      input.style.top = y + 'px';
+      // Set font size and color
       const textSize = document.getElementById('textSizeSelector').value;
       input.style.font = `${textSize}px sans-serif`;
       input.style.color = colorPicker.value;
-      document.body.appendChild(input);
+      container.appendChild(input);
       input.focus();
 
       // Finalize the text input by drawing it on the canvas
@@ -681,13 +684,14 @@
         const text = input.innerText;
         if (text) {
           ctx.font = `${textSize}px sans-serif`;
+          ctx.textBaseline = 'top'; // Align text from the top
           ctx.fillStyle = colorPicker.value;
-          // Adjust y-coordinate so text sits where you clicked
-          ctx.fillText(text, x, y + parseInt(textSize));
+          ctx.fillText(text, x, y); // Draw text at the clicked coordinates (relative to canvas)
         }
-        document.body.removeChild(input);
+        container.removeChild(input);
         updateStatus("Text added");
       }
+
       input.addEventListener('keydown', function(e) {
         if (e.key === 'Enter') {
           e.preventDefault();
@@ -696,7 +700,8 @@
       });
       input.addEventListener('blur', finalizeText);
     }
-    
+
+
     // Mouse event handling
     canvas.addEventListener('mousedown', function(e) {
       startX = e.offsetX;
